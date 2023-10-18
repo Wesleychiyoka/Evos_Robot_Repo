@@ -11,7 +11,7 @@ import java.util.function.Supplier;
 
 public class ER {
     public static Normalisation normalisation;
-    private static final double[] sensor_range = new double[] {90, 4_000}; // Change
+    private static final double[] sensor_range = new double[] {0, 3900};
     static {
         // Normalisation
         normalisation = new Normalisation(input -> {
