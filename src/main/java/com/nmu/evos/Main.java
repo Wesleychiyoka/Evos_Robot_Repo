@@ -2,11 +2,16 @@ package com.nmu.evos;
 
 import com.nmu.evos.simulator.*;
 
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class Main {
-    public static void main(String[] args) {
-        new Main();
+    public static void main(String[] args) throws FileNotFoundException {
+        ER er = new ER();
+        //er.train();
+        ER.Individual best = er.loadBest("best.er.20231018162343.com.nmu.evos.TanHActivation.com.nmu.evos.TanHActivation.nn");
+        er.simulate(best, new TanHActivation(), new TanHActivation());
     }
 
     Main() {
