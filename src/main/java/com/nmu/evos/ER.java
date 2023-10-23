@@ -120,6 +120,7 @@ public class ER {
 
     public void evaluateFitness(Individual individual) {
         double fitness = 0.0;
+        double obstacle_hits = 0;
 
         Point start = start_end_pos[0];
         Point end = start_end_pos[1];
@@ -146,6 +147,8 @@ public class ER {
 
             double current_distance = distance(state.position.sx, state.position.sy, end.x, end.y);
 
+            if (state.collision) obstacle_hits++; // Count number of obstacle collisions
+
             fitness += 1 / (current_distance + 1);
 
             normalised_xy = Normalisation.normalise(new double[] {state.position.sx, state.position.sy}, 0, 150, -1, 1);
@@ -163,6 +166,9 @@ public class ER {
         StringBuilder builder = new StringBuilder("Individual{");
         builder.append("fitness=").append(fitness);
         builder.append("}");
+
+        double min_obj_func = 1 / (obstacle_hits + 1);
+        fitness = fitness + min_obj_func;
 
         individual.fitness = fitness;
         individual.info = builder::toString;
