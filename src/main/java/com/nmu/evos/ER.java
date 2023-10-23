@@ -1,5 +1,6 @@
 package com.nmu.evos;
 
+import com.nmu.evos.execute.Tracker;
 import com.nmu.evos.simulator.*;
 
 import java.io.File;
@@ -17,13 +18,10 @@ public class ER {
         normalisation = new Normalisation(input -> {
             // normaliser - input
             double[] xy_pos = Normalisation.normalise(Arrays.copyOfRange(input, 0, 2), 0, 150, -1, 1); // Assuming xy plane ranges from (0,0) to (150,150)
-            double[] prev_motor = Normalisation.normalise(Arrays.copyOfRange(input, 2, 4), 8_000, 17_500, -1, 1);
-            double[] sensors = Normalisation.normalise(Arrays.copyOfRange(input, 4, 13), sensor_range[0], sensor_range[1], -1, 1);
+            double[] sensors = Normalisation.normalise(Arrays.copyOfRange(input, 2, 11), sensor_range[0], sensor_range[1], -1, 1);
             return new double[] {
                     xy_pos[0],
                     xy_pos[1],
-                    prev_motor[0],
-                    prev_motor[1],
                     sensors[0],
                     sensors[1],
                     sensors[2],
@@ -37,20 +35,20 @@ public class ER {
             // de_normaliser - output
         }, input -> Normalisation.de_normalise(input, 8_000, 17_500, -1, 1));
     }
-    private static final int COMMAND_COUNT = 40;
+    private static final int COMMAND_COUNT = 50;
     public StringBuilder training_info = new StringBuilder();
-    private final Random random = new Random(387624353);
+    private final Random random = new Random(988687678);
     private final int POP_SIZE = 200;
-    private final int GENERATIONS = 50;
-    private final int INPUT_NEURON_COUNT = 4;
-    private final int HIDDEN_LAYER_NEURON_COUNT = 5;
+    private final int GENERATIONS = 200;
+    private final int INPUT_NEURON_COUNT = 11;
+    private final int HIDDEN_LAYER_NEURON_COUNT = 12;
     private final int OUTPUT_NEURON_COUNT = 2;
     private final double MUT_RATE = 0.1;
     private final double MUT_STD_DEV = 0.1;
     private int generation_counter = 0;
     private Individual[] population = new Individual[POP_SIZE];
     public final Point[] start_end_pos = new Point[] {new Point(150, 150), new Point(0, 0)};
-    private final double robot_initial_bearing = 0;
+    private final double robot_initial_orientation = getFacingOrientation(new Point(0, 0), new Point(150, 150));
     public class Individual {
         public double fitness;
         private Supplier<String> info;
@@ -119,61 +117,64 @@ public class ER {
     }
 
     public void evaluateFitness(Individual individual) {
-        double fitness = 0.0;
+        double fitness = 0;
         double obstacle_hits = 0;
+        double times_outside_of_region = 0;
 
         Point start = start_end_pos[0];
         Point end = start_end_pos[1];
-        //ArrayList<Point> obstacles = randomPoints(5, 150, 150);
 
-        State start_state = new State(start.x,start.y, robot_initial_bearing);
-        KheperaSimulator khepera_simulator = new KheperaSimulator(start_state);
+        Tracker tracker = new Tracker(start, robot_initial_orientation, new Point(0, 0), new Point(150, 150));
 
-        // Initial state
-        double[] normalised_xy = Normalisation.normalise(new double[] {start.x, start.y}, 0, 150, -1, 1);
-        double[] input = new double[4];
-        input[0] = normalised_xy[0];
-        input[1] = normalised_xy[1];
-        input[2] = 0;
-        input[3] = 0;
-        //double[] sensors = khepera_simulator.srs.getSensorReadings((int)start.x, (int) start.y, robot_initial_bearing, new ArrayList<>());
-        //System.arraycopy(Normalisation.normalise(sensors, sensor_range[0], sensor_range[1], -1, 1), 0, input, 4, sensors.length); // Copying normalised sensor values to 'input' from index 4 onwards
+        for (int rounds = 0; rounds < 30; rounds++) {
+            ArrayList<Point> obstacles = randomPoints(random.nextInt(5, 10), 150, 150);
 
-        for (int i = 0; i < COMMAND_COUNT; i++) {
-            double[] output = individual.genome.fire(input, new TanHActivation(), new TanHActivation());
-            double[] denormalised_output = Normalisation.de_normalise(output, 8_000, 17_500, -1, 1);
+            State start_state = new State(start.x, start.y, robot_initial_orientation);
+            KheperaSimulator khepera_simulator = new KheperaSimulator(obstacles, start_state);
 
-            KheperaState state = khepera_simulator.getNextKheperaState(new Command((int) denormalised_output[0], (int) denormalised_output[1], 800));
+            KheperaState state = khepera_simulator.getNextKheperaState(new Command(0, 0, 800));
 
-            double current_distance = distance(state.position.sx, state.position.sy, end.x, end.y);
-
-            if (state.collision) obstacle_hits++; // Count number of obstacle collisions
-
-            fitness += 1 / (current_distance + 1);
-
-            normalised_xy = Normalisation.normalise(new double[] {state.position.sx, state.position.sy}, 0, 150, -1, 1);
-
+            // Initial state
+            double[] normalised_xy = Normalisation.normalise(new double[]{start.x, start.y}, 0, 150, -1, 1);
+            double[] input = new double[11];
             input[0] = normalised_xy[0];
             input[1] = normalised_xy[1];
-            input[2] = output[0];
-            input[3] = output[1];
-            //sensors = state.sensorReadings;
+            double[] sensors = state.sensorReadings;
+            System.arraycopy(Normalisation.normalise(sensors, sensor_range[0], sensor_range[1], -1, 1), 0, input, 2, sensors.length); // Copying normalised sensor values to 'input' from index 4 onwards
 
-            //System.arraycopy(Normalisation.normalise(sensors, sensor_range[0], sensor_range[1], -1, 1), 0, input, 4, sensors.length);
+            for (int i = 0; i < COMMAND_COUNT; i++) {
+                double current_distance = distance(state.position.sx, state.position.sy, end.x, end.y);
+                if (!tracker.grids.contains(state.position.sx, state.position.sy)) times_outside_of_region++;
+                if (state.collision) obstacle_hits++;
+                fitness += 1 / (current_distance + 1);
+
+                double[] output = individual.genome.fire(input, new TanHActivation(), new TanHActivation());
+                double[] denormalised_output = Normalisation.de_normalise(output, 8_000, 17_500, -1, 1);
+
+                state = khepera_simulator.getNextKheperaState(new Command((int) denormalised_output[0], (int) denormalised_output[1], 800));
+
+                normalised_xy = Normalisation.normalise(new double[]{state.position.sx, state.position.sy}, 0, 150, -1, 1);
+
+                input[0] = normalised_xy[0];
+                input[1] = normalised_xy[1];
+                sensors = state.sensorReadings;
+
+                System.arraycopy(Normalisation.normalise(sensors, sensor_range[0], sensor_range[1], -1, 1), 0, input, 2, sensors.length);
+            }
         }
 
+        double oh = obstacle_hits / (obstacle_hits + 1);
+        double tor = times_outside_of_region / (times_outside_of_region + 1);
+        fitness = fitness - oh - tor;
 
         StringBuilder builder = new StringBuilder("Individual{");
-        builder.append("fitness=").append(fitness);
+        builder.append("fitness=").append(fitness).append(",");
+        builder.append("obstacle_hits=").append(obstacle_hits);
         builder.append("}");
-
-        double min_obj_func = 1 / (obstacle_hits + 1);
-        fitness = fitness + min_obj_func;
 
         individual.fitness = fitness;
         individual.info = builder::toString;
     }
-
 
     public static double distance(double x1, double y1, double x2, double y2) {
         double dx = x1 - x2;
@@ -184,20 +185,19 @@ public class ER {
     public void simulate(Individual individual, Activation hidden_layer_activation, Activation output_layer_activation) {
         Point start = start_end_pos[0];
         Point end = start_end_pos[1];
-        //ArrayList<Point> obstacles = randomPoints(5, 150, 150);
+        ArrayList<Point> obstacles = randomPoints(random.nextInt(5, 10), 150, 150);
+        Tracker tracker = new Tracker(start, robot_initial_orientation, new Point(0, 0), new Point(150, 150));
 
-        State start_state = new State(start.x,start.y, robot_initial_bearing);
-        KheperaSimulator khepera_simulator = new KheperaSimulator(start_state);
+        State start_state = new State(start.x,start.y, robot_initial_orientation);
+        KheperaSimulator khepera_simulator = new KheperaSimulator(obstacles,start_state);
 
         // Initial state
         double[] normalised_xy = Normalisation.normalise(new double[] {start.x, start.y}, 0, 150, -1, 1);
-        double[] input = new double[4];
+        double[] input = new double[11];
         input[0] = normalised_xy[0];
         input[1] = normalised_xy[1];
-        input[2] = 0;
-        input[3] = 0;
-        //double[] sensors = khepera_simulator.srs.getSensorReadings((int)start.x, (int) start.y, robot_initial_bearing, new ArrayList<>());
-        //System.arraycopy(Normalisation.normalise(sensors, sensor_range[0], sensor_range[1], -1, 1), 0, input, 4, sensors.length); // Copying normalised sensor values to 'input' from index 4 onwards
+        double[] sensors = khepera_simulator.srs.getSensorReadings((int)start.x, (int) start.y, robot_initial_orientation, new ArrayList<>());
+        System.arraycopy(Normalisation.normalise(sensors, sensor_range[0], sensor_range[1], -1, 1), 0, input, 2, sensors.length); // Copying normalised sensor values to 'input' from index 4 onwards
 
         ArrayList<State> post_states = new ArrayList<>();
 
@@ -213,14 +213,12 @@ public class ER {
 
             input[0] = normalised_xy[0];
             input[1] = normalised_xy[1];
-            input[2] = output[0];
-            input[3] = output[1];
-            //sensors = state.sensorReadings;
+            sensors = state.sensorReadings;
 
-            //System.arraycopy(Normalisation.normalise(sensors, sensor_range[0], sensor_range[1], -1, 1), 0, input, 4, sensors.length);
+            System.arraycopy(Normalisation.normalise(sensors, sensor_range[0], sensor_range[1], -1, 1), 0, input, 2, sensors.length);
         }
 
-        VisualFrame vis = new VisualFrame(50, 50, 1000, 1000, new ArrayList<>(), 5, end, new Point((int) start_state.sx, (int) start_state.sy) , khepera_simulator.targetRadius, khepera_simulator.robotRadius);
+        VisualFrame vis = new VisualFrame(50, 50, 1000, 1000, obstacles, 5, end, new Point((int) start_state.sx, (int) start_state.sy) , khepera_simulator.targetRadius, khepera_simulator.robotRadius, tracker.grids.getGrids());
         vis.setPath(post_states, "Number States: " + post_states.size());
         Thread t = new Thread(vis);
 
@@ -232,15 +230,27 @@ public class ER {
         }
     }
 
-    public ArrayList<Point> randomPoints(int count, int x, int y) {
-        ArrayList<Point> points = new ArrayList<>();
+    // Orientation with respect to 'end', e.g., if facing directly at 'end' position than 0.0 is returned
+    public static double getRelativeOrientation(Point start, Point end, double o) {
+        double obsolute = (-Math.atan2(end.x - start.x, end.y - start.y)) % (Math.PI * 2);
+        obsolute = (obsolute / Math.PI) * 180;
+        return (360 - o + obsolute + 180) % 360;
+    }
 
+    public ArrayList<Point> randomPoints(int count, int region_end_x, int region_end_y) {
+        ArrayList<Point> points = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            Point point = new Point(random.nextDouble() * x, random.nextDouble() * y);
+            Point point = new Point(random.nextDouble() * region_end_x, random.nextDouble() * region_end_y);
             points.add(point);
         }
 
         return points;
+    }
+
+    public int getFacingOrientation(Point l, Point r) {
+        double orientation = (-Math.atan2(l.x - r.x, l.y - r.y)) % (Math.PI * 2);
+        orientation = (orientation / Math.PI) * 180;
+        return (int) orientation;
     }
 
     private void initialisePopulation() {

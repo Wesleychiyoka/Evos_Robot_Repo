@@ -1,17 +1,47 @@
 package com.nmu.evos;
 
+import com.nmu.evos.execute.Tracker;
 import com.nmu.evos.simulator.*;
 
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 public class Main {
     public static void main(String[] args) throws FileNotFoundException {
         ER er = new ER();
-        //er.train();
-        ER.Individual best = er.loadBest("best.er.20231018162343.com.nmu.evos.TanHActivation.com.nmu.evos.TanHActivation.nn");
-        er.simulate(best, new TanHActivation(), new TanHActivation());
+        er.train();
+        //ER.Individual best = er.loadBest("best.er.20231023154938.com.nmu.evos.TanHActivation.com.nmu.evos.TanHActivation.nn");
+        //er.simulate(best, new TanHActivation(), new TanHActivation());
+
+        /*double o = er.getFacingOrientation(new Point(0, 0), new Point(149, 149));
+        Tracker tracker = new Tracker(new Point(150, 50), o, new Point(0, 0), new Point(150, 150));
+        Command c = new Command(8000, 8000, 3000);
+        tracker.getApproximatePosition(c);
+        c = new Command(8000, 0, 1000);
+        tracker.getApproximatePosition(c);
+        c = new Command(8000, 8000, 3000);
+        tracker.getApproximatePosition(c);
+        c = new Command(8000, 8000, 3000);
+        tracker.getApproximatePosition(c);
+        c = new Command(16000, 8000, 400);
+        tracker.getApproximatePosition(c);
+        c = new Command(16000, 8000, 400);
+        tracker.getApproximatePosition(c);
+        c = new Command(16000, 8000, 400);
+        tracker.getApproximatePosition(c);
+        c = new Command(8000, 8000, 3000);
+        tracker.getApproximatePosition(c);
+        c = new Command(8000, 8000, 3000);
+        tracker.getApproximatePosition(c);
+        c = new Command(8000, 8000, 3000);
+        tracker.getApproximatePosition(c);
+        c = new Command(8000, 8000, 3000);
+        tracker.getApproximatePosition(c);
+        c = new Command(8000, 8000, 3000);
+        tracker.getApproximatePosition(c);
+        c = new Command(8000, 8000, 3000);
+        tracker.getApproximatePosition(c);
+        tracker.showVisualPath();*/
     }
 
     Main() {

@@ -1,6 +1,8 @@
 
 package com.nmu.evos.simulator;
 
+import com.nmu.evos.execute.Tracker;
+
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -11,8 +13,10 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Optional;
 
 public class VisualFrame extends Frame implements Runnable, KeyListener, WindowListener {
+    private Tracker.VisualGrid visualGrid = null;
     Thread t;
     Image buffer;
     Graphics bg;
@@ -58,6 +62,28 @@ public class VisualFrame extends Frame implements Runnable, KeyListener, WindowL
         this.y = (int)start.y;
         
        
+    }
+
+    public VisualFrame(int left, int right, int width, int height, ArrayList<Point> obstacles, double obstacleSize, Point target, Point start, double targetSize, double robotSize, Tracker.Grid[][] grids) {
+        this.obstacles = obstacles;
+        this.obstacleSize = obstacleSize*2;
+        this.robotSize = robotSize*2;
+        this.target = target;
+        this.targetSize = targetSize*2;
+        this.speedUpFactor = 1;
+        this.path = new ArrayList<State>();
+        this.patternStates = new ArrayList<State>();
+        this.message = "";
+        this.visualGrid = new Tracker.VisualGrid(grids, this);
+        addKeyListener(this);
+        addWindowListener(this);
+        setBounds(left, right, width, height);
+        setVisible(true);
+
+        this.x = (int)start.x;
+        this.y = (int)start.y;
+
+
     }
 
     public void setSpeedUpFactor(double factor) {
@@ -184,6 +210,11 @@ public class VisualFrame extends Frame implements Runnable, KeyListener, WindowL
         this.bg.setColor(new Color(0.0F, 0.0F, 1.0F, 0.5F));
         this.bg.fillOval((int)target.x*2 / this.Scale - (int) targetSize + getWidth() / 2, -(int)target.y*2 / this.Scale - (int)obstacleSize   + getHeight() / 2, (int)obstacleSize  * 2, (int) obstacleSize  * 2);
 
+        //region CUSTOM METHOD CALL
+        Optional.ofNullable(visualGrid).ifPresent(vg -> vg.drawGrids(bg, Scale));
+        //endregion
+
+        this.bg.setColor(new Color(0.0F, 1.0F, 0.0F, 1.0F));
         g.drawImage(this.buffer, 0, 0, null);
     }
 
