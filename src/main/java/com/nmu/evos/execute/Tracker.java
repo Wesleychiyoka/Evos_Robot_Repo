@@ -144,6 +144,9 @@ public class Tracker {
         public Grid[][] getGrids() {
             return grids;
         }
+        public double distanceFromCircularInnerBoundary(double x, double y) {
+            return distanceFromCenter(x, y) - getMinCircularInnerBoundaryRadius();
+        }
     }
     public abstract class Region {
         protected final Point start;

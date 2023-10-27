@@ -35,15 +35,15 @@ public class ER {
             // de_normaliser - output
         }, input -> Normalisation.de_normalise(input, 8_000, 17_500, -1, 1));
     }
-    private static final int COMMAND_COUNT = 50;
+    private static final int COMMAND_COUNT = 70;
     public StringBuilder training_info = new StringBuilder();
     private final Random random = new Random(988687678);
-    private final int POP_SIZE = 200;
-    private final int GENERATIONS = 200;
+    private final int POP_SIZE = 500;
+    private final int GENERATIONS = 10000;
     private final int INPUT_NEURON_COUNT = 11;
-    private final int HIDDEN_LAYER_NEURON_COUNT = 12;
+    private final int HIDDEN_LAYER_NEURON_COUNT = 27;
     private final int OUTPUT_NEURON_COUNT = 2;
-    private final double MUT_RATE = 0.1;
+    private final double MUT_RATE = 0.5;
     private final double MUT_STD_DEV = 0.1;
     private int generation_counter = 0;
     private Individual[] population = new Individual[POP_SIZE];
@@ -97,6 +97,7 @@ public class ER {
                 System.out.println("GENERATION = " + generation_counter + " / " + GENERATIONS);
                 training_info.append("GENERATION = ").append(generation_counter).append(" / ").append(GENERATIONS).append("\n");
                 displayTopN(population, 10);
+                if (generation_counter % 100 == 0 & generation_counter != 0) saveBest(population[0], "er/best.er");
             }
         }
 
@@ -104,7 +105,7 @@ public class ER {
         System.out.println("\nBEST:");
         System.out.println(population[0]);
         saveBest(population[0], "best.er");
-        simulate(population[0], population[0].genome.hidden_layer_activation_function, population[0].genome.output_layer_activation_function);
+        simulate(population[0], population[0].genome.hidden_layer_activation_function, population[0].genome.output_layer_activation_function, new Random(seed));
     }
     private void displayTopN(Individual[] population, int n) {
         StringBuilder temp = new StringBuilder();
@@ -115,19 +116,22 @@ public class ER {
         System.out.println(temp);
         training_info.append(temp);
     }
-
+    public long seed = 879869761;
     public void evaluateFitness(Individual individual) {
+        if (generation_counter % 10 == 0 && generation_counter != 0) seed++;
+        Random rnd = new Random(seed);
+        rnd.nextDouble();
         double fitness = 0;
-        double obstacle_hits = 0;
-        double times_outside_of_region = 0;
+        double acc_outside_of_region_penalty = 0;
+        double acc_collision_penalty = 0;
 
         Point start = start_end_pos[0];
         Point end = start_end_pos[1];
 
         Tracker tracker = new Tracker(start, robot_initial_orientation, new Point(0, 0), new Point(150, 150));
 
-        for (int rounds = 0; rounds < 30; rounds++) {
-            ArrayList<Point> obstacles = randomPoints(random.nextInt(5, 10), 150, 150);
+        for (int rounds = 0; rounds < 5; rounds++) {
+            ArrayList<Point> obstacles = randomPoints(rnd, 20, 150, 150);
 
             State start_state = new State(start.x, start.y, robot_initial_orientation);
             KheperaSimulator khepera_simulator = new KheperaSimulator(obstacles, start_state);
@@ -144,9 +148,15 @@ public class ER {
 
             for (int i = 0; i < COMMAND_COUNT; i++) {
                 double current_distance = distance(state.position.sx, state.position.sy, end.x, end.y);
-                if (!tracker.grids.contains(state.position.sx, state.position.sy)) times_outside_of_region++;
-                if (state.collision) obstacle_hits++;
-                fitness += 1 / (current_distance + 1);
+                if (!tracker.grids.contains(state.position.sx, state.position.sy)) {
+                    double distance_from_circular_inner_boundary = tracker.grids.distanceFromCircularInnerBoundary(state.position.sx, state.position.sy);
+                    double penalty = distance_from_circular_inner_boundary / (1000.0 + distance_from_circular_inner_boundary);
+                    acc_outside_of_region_penalty += penalty;
+                }
+
+                acc_collision_penalty += collisionPenalty(obstacles, new Point(state.position.sx, state.position.sy));
+
+                fitness += 0.5 / (current_distance + 1);
 
                 double[] output = individual.genome.fire(input, new TanHActivation(), new TanHActivation());
                 double[] denormalised_output = Normalisation.de_normalise(output, 8_000, 17_500, -1, 1);
@@ -163,17 +173,27 @@ public class ER {
             }
         }
 
-        double oh = obstacle_hits / (obstacle_hits + 1);
-        double tor = times_outside_of_region / (times_outside_of_region + 1);
-        fitness = fitness - oh - tor;
+        fitness = fitness - acc_collision_penalty - acc_outside_of_region_penalty;
 
         StringBuilder builder = new StringBuilder("Individual{");
-        builder.append("fitness=").append(fitness).append(",");
-        builder.append("obstacle_hits=").append(obstacle_hits);
+        builder.append("fitness=").append(fitness).append(", ");
+        builder.append("acc_collision_penalty=").append(acc_collision_penalty);
         builder.append("}");
 
         individual.fitness = fitness;
         individual.info = builder::toString;
+    }
+
+    public double collisionPenalty(ArrayList<Point> obstacles, Point robot_pos) {
+        double penalty = 0;
+        for (Point obstacle_pos : obstacles) {
+            double distance = distance(robot_pos.x, robot_pos.y, obstacle_pos.x, obstacle_pos.y);
+            if (distance <= 7) {
+                double inverse_distance = 0.6 / (distance + 1);
+                penalty += inverse_distance;
+            }
+        }
+        return penalty;
     }
 
     public static double distance(double x1, double y1, double x2, double y2) {
@@ -182,10 +202,10 @@ public class ER {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    public void simulate(Individual individual, Activation hidden_layer_activation, Activation output_layer_activation) {
+    public void simulate(Individual individual, Activation hidden_layer_activation, Activation output_layer_activation, Random rnd) {
         Point start = start_end_pos[0];
         Point end = start_end_pos[1];
-        ArrayList<Point> obstacles = randomPoints(random.nextInt(5, 10), 150, 150);
+        ArrayList<Point> obstacles = randomPoints(rnd, 20, 150, 150);
         Tracker tracker = new Tracker(start, robot_initial_orientation, new Point(0, 0), new Point(150, 150));
 
         State start_state = new State(start.x,start.y, robot_initial_orientation);
@@ -237,7 +257,7 @@ public class ER {
         return (360 - o + obsolute + 180) % 360;
     }
 
-    public ArrayList<Point> randomPoints(int count, int region_end_x, int region_end_y) {
+    public ArrayList<Point> randomPoints(Random random,int count, int region_end_x, int region_end_y) {
         ArrayList<Point> points = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             Point point = new Point(random.nextDouble() * region_end_x, random.nextDouble() * region_end_y);
@@ -258,7 +278,7 @@ public class ER {
             Individual individual = new Individual();
             double[] initialWeights = new double[individual.genome.countWeights()];
             for (int j = 0; j < initialWeights.length; j++) {
-                initialWeights[j] = random.nextDouble() * 4 - 2;
+                initialWeights[j] = random.nextDouble() * 2 - 1;
                 //initialWeights[j] = random.nextDouble(-1/Math.sqrt(set.inputLength()), 1/ Math.sqrt(set.inputLength()));
             }
             individual.genome.setWeights(initialWeights);

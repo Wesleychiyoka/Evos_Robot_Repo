@@ -6,10 +6,10 @@ import java.util.*;
 public class KheperaSimulator
 {
     public final int numInterpolations = 5; 
-    public final int sensorAngle = 7; 
+    public final int sensorAngle = 7;
     public final int obstacleDangerDistance = 20;
-    public final int robotRadius = 7; 
-    public final int obstacleRadius = 3;
+    public static final int robotRadius = 7;
+    public static final int obstacleRadius = 3;
     public final int targetRadius = 2;
 
     MotionSimulatorPatched msp;

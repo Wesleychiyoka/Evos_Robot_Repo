@@ -5,13 +5,16 @@ import com.nmu.evos.simulator.*;
 
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.Random;
 
 public class Main {
     public static void main(String[] args) throws FileNotFoundException {
         ER er = new ER();
-        er.train();
-        //ER.Individual best = er.loadBest("best.er.20231023154938.com.nmu.evos.TanHActivation.com.nmu.evos.TanHActivation.nn");
-        //er.simulate(best, new TanHActivation(), new TanHActivation());
+        Random rnd = new Random(er.seed);
+        rnd.nextDouble();
+        //er.train();
+        ER.Individual best = er.loadBest("er/1/best.er.20231026195321.com.nmu.evos.TanHActivation.com.nmu.evos.TanHActivation.nn");
+        er.simulate(best, new TanHActivation(), new TanHActivation(), rnd);
 
         /*double o = er.getFacingOrientation(new Point(0, 0), new Point(149, 149));
         Tracker tracker = new Tracker(new Point(150, 50), o, new Point(0, 0), new Point(150, 150));
