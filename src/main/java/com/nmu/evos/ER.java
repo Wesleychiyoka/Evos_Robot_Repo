@@ -188,7 +188,7 @@ public class ER {
         double penalty = 0;
         for (Point obstacle_pos : obstacles) {
             double distance = distance(robot_pos.x, robot_pos.y, obstacle_pos.x, obstacle_pos.y);
-            if (distance <= 7) {
+            if (distance <= KheperaSimulator.robotRadius + KheperaSimulator.obstacleRadius) { //TODO Requires finetuning for testing
                 double inverse_distance = 0.6 / (distance + 1);
                 penalty += inverse_distance;
             }
