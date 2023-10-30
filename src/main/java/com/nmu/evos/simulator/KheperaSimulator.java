@@ -6,14 +6,14 @@ import java.util.*;
 public class KheperaSimulator
 {
     public final int numInterpolations = 5; 
-    public final int sensorAngle = 7; 
+    public final int sensorAngle = 7;
     public final int obstacleDangerDistance = 20;
-    public final int robotRadius = 7; 
-    public final int obstacleRadius = 3;
+    public static final int robotRadius = 7;
+    public static final int obstacleRadius = 3;
     public final int targetRadius = 2;
 
     MotionSimulatorPatched msp;
-    SensorReadingSimulator srs;
+    public SensorReadingSimulator srs;
     State startState;
     ArrayList<Point> obstacles;
 
@@ -112,6 +112,29 @@ public class KheperaSimulator
         }
 
         return this.kstates;
+    }
+
+    public KheperaState getNextKheperaState(Command command) {
+        if(kstates.size() == 0)
+        {
+            KheperaState ks = new KheperaState();
+            ks.position = startState;
+            ks.sensorReadings = srs.getSensorReadings((int) startState.sx, (int) startState.sy, startState.sa, obstacles);
+            ks.collision = false;
+            this.kstates.add(ks);
+        }
+
+        this.commands.add(command);
+        State prevState = states.get(states.size() - 1);
+        states.add(msp.getMovement(prevState, command));
+        State s = states.get(states.size() - 1);
+        KheperaState ks = new KheperaState();
+        ks.position = s;
+        ks.sensorReadings = srs.getSensorReadings((int) s.sx, (int) s.sy, s.sa, obstacles);
+        ks.collision = checkCollisionOnPath(prevState, command, msp, obstacles, ks.sensorReadings) || checkForCollision(s, obstacles, ks.sensorReadings);
+        kstates.add(ks);
+
+        return ks;
     }
 
     private boolean checkCollisionOnPath(State start, Command netCommand, MotionSimulatorPatched sim, ArrayList<Point> obstacleList, double[] sensorReadings) {
