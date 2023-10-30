@@ -35,7 +35,7 @@ public class ER {
             // de_normaliser - output
         }, input -> Normalisation.de_normalise(input, 8_000, 17_500, -1, 1));
     }
-    private static final int COMMAND_COUNT = 70;
+    private static final int COMMAND_COUNT = 50;
     public StringBuilder training_info = new StringBuilder();
     private final Random random = new Random(988687678);
     private final int POP_SIZE = 500;

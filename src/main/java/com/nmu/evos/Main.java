@@ -12,9 +12,9 @@ public class Main {
         ER er = new ER();
         Random rnd = new Random(er.seed);
         rnd.nextDouble();
-        //er.train();
-        ER.Individual best = er.loadBest("er/1/best.er.20231026195321.com.nmu.evos.TanHActivation.com.nmu.evos.TanHActivation.nn");
-        er.simulate(best, new TanHActivation(), new TanHActivation(), rnd);
+        er.train();
+        //ER.Individual best = er.loadBest("er/best.er.20231028030109.com.nmu.evos.TanHActivation.com.nmu.evos.TanHActivation.nn");
+        //er.simulate(best, new TanHActivation(), new TanHActivation(), rnd);
 
         /*double o = er.getFacingOrientation(new Point(0, 0), new Point(149, 149));
         Tracker tracker = new Tracker(new Point(150, 50), o, new Point(0, 0), new Point(150, 150));
