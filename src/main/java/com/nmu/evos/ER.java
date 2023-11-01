@@ -12,7 +12,7 @@ import java.util.function.Supplier;
 
 public class ER {
     public static Normalisation normalisation;
-    private static final double[] sensor_range = new double[] {0, 3900};
+    public static final double[] sensor_range = new double[] {0, 3900};
     static {
         // Normalisation
         normalisation = new Normalisation(input -> {
@@ -48,7 +48,7 @@ public class ER {
     private int generation_counter = 0;
     private Individual[] population = new Individual[POP_SIZE];
     public final Point[] start_end_pos = new Point[] {new Point(150, 150), new Point(0, 0)};
-    private final double robot_initial_orientation = getFacingOrientation(new Point(0, 0), new Point(150, 150));
+    public final double robot_initial_orientation = getFacingOrientation(new Point(0, 0), new Point(150, 150));
     public class Individual {
         public double fitness;
         private Supplier<String> info;
